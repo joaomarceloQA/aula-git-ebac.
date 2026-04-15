@@ -3,8 +3,9 @@ name: CI de Testes de API
 on:
   push:
     branches: [main, master]
-  pull_request:
-    branches: [main, master]
+
+env:
+  URL_BASE: http://localhost:3000 # Passo 6: Configuração de ambiente
 
 jobs:
   execucao-testes:
@@ -25,16 +26,17 @@ jobs:
         run: |
           npx serverest@latest --port 3000 &
           echo "Aguardando API..."
-          until $(curl --output /dev/null --silent --head --fail http://localhost:3000); do
+          until $(curl --output /dev/null --silent --head --fail ${{ env.URL_BASE }}); do
             printf '.'
             sleep 5
           done
           echo "API Online!"
-          npx cypress run --config baseUrl=http://localhost:3000 --spec "cypress/integration/*.spec.js"
+          # Passo 4: Rodando com gerador de relatório mochawesome
+          npx cypress run --reporter mochawesome --reporter-options "reportDir=cypress/reports,overwrite=false,html=true,json=false" --config baseUrl=${{ env.URL_BASE }} --spec "cypress/integration/*.spec.js"
 
-      - name: Upload do Relatório
+      - name: Publicar Relatório no GitHub Pages # Passo 5: Publicação
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          name: relatorio-final
-          path: cypress/reports
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./cypress/reports
